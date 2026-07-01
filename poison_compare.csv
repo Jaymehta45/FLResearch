@@ -1,0 +1,3 @@
+run,clients,rounds,poison_client,poison_fraction,poison_mode,accuracy,precision,recall,f1-score
+baseline_no_poison,5,5,-1,0.0,target,0.9004052108100867,0.9160071698418902,0.9004052108100867,0.898524834141553
+poison_client0_target0_25pct,5,5,0,0.25,target,0.8991884620966032,0.9133301245624663,0.8991884620966032,0.897352619792255
