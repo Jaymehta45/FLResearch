@@ -12,6 +12,7 @@ from plotly.io import to_html
 CSV = Path(__file__).parent / "many_tests_ranked_all.csv"
 OUT_HTML = Path(__file__).parent / "figures" / "many_tests_dashboard.html"
 OUT_HTML_ROOT = Path(__file__).parent / "many_tests_dashboard.html"
+OUT_HTML_PUBLIC = Path(__file__).parent / "public" / "index.html"
 
 SCENARIO_ORDER = ["clean", "25% target", "40% target", "40% random_wrong"]
 PLOTLY_CONFIG = {"displayModeBar": True, "responsive": True}
@@ -342,10 +343,13 @@ def main() -> None:
     html = build_combined_html(experiments_body, confusion_body)
 
     OUT_HTML.parent.mkdir(exist_ok=True)
+    OUT_HTML_PUBLIC.parent.mkdir(exist_ok=True)
     OUT_HTML.write_text(html, encoding="utf-8")
     OUT_HTML_ROOT.write_text(html, encoding="utf-8")
+    OUT_HTML_PUBLIC.write_text(html, encoding="utf-8")
     print("Wrote", OUT_HTML.resolve())
     print("Wrote", OUT_HTML_ROOT.resolve())
+    print("Wrote", OUT_HTML_PUBLIC.resolve())
 
 
 if __name__ == "__main__":

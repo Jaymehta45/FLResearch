@@ -1,0 +1,8 @@
+Dataset.csv
+Label.csv
+CICFlowMeter.csv
+__pycache__
+*.pyc
+*.log
+figures/
+share_results/
