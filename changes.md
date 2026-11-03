@@ -1,5 +1,37 @@
 # Change Log
 
+## [2026-11-03] - Expanded IEEE paper to ~15–20 pages with theory
+
+### Summary
+Expanded the IEEE sample paper from a short conference draft into a ~20-page journal-style document with formal theory, algorithms, additional tables, deeper discussion, and more references.
+
+### Reason
+User requested a longer paper (15–20 pages) with more theory.
+
+### Files Modified
+* `paper/ieee_paper.tex` — switched to `IEEEtran` journal class; added theory sections (risk, FedAvg math, communication model, threat model, dilution, convergence), Algorithm 1, Table II, expanded related work/discussion, 10 references
+* `paper/ieee_paper.html` — matching long-form printable HTML
+* `paper/ieee_paper.pdf` — regenerated (~20 pages, ~1.4 MB)
+* `paper/README.md` — updated documentation
+* `changes.md` — this entry
+
+### Implementation Details
+* Added equations for population/empirical risk, client risk mixture, FedAvg weights, communication scaling, MLP map, accuracy/confusion/TP–FP–FN–TN, and poisoned-client dilution.
+* Added mean-accuracy Table II from the 64-run sweep aggregates.
+* Kept all architecture and experimental figures embedded in the PDF via HTML print pipeline.
+
+### Impact
+Paper length and theoretical depth increased substantially; experimental claims unchanged.
+
+### Testing
+* Regenerated PDF via headless Chrome; approximate page count ~20.
+* Verified PDF/HTML/TEX file sizes on disk.
+
+### Additional Notes
+Still a sample/draft; author email placeholder remains.
+
+---
+
 ## [2026-11-03] - IEEE sample research paper package
 
 ### Summary
