@@ -1,5 +1,31 @@
 # Change Log
 
+## [2026-11-03] - Silence unusual line-terminator warning on PDF
+
+### Summary
+Added workspace editor settings so opening `ieee_paper.pdf` in Cursor/VS Code no longer prompts about unusual line terminators.
+
+### Reason
+PDFs are binary; the editor can mis-detect byte sequences (e.g. NEL `U+0085`) inside compressed streams as “unusual line terminators” when the file is opened as text.
+
+### Files Modified
+* `.vscode/settings.json` — set `editor.unusualLineTerminators` to `off`; exclude `*.pdf` from file watching noise
+
+### Implementation Details
+Confirmed `ieee_paper.html` has no U+2028/U+2029. The PDF has no LS/PS UTF-8 sequences; NEL bytes appear only as binary stream content and must not be stripped (that would corrupt the PDF).
+
+### Impact
+Editor UX only; paper content unchanged.
+
+### Testing
+* Inspected HTML/PDF byte contents for LS/PS/NEL.
+* Did not alter PDF bytes.
+
+### Additional Notes
+Open `paper/ieee_paper.pdf` with Preview, Chrome, or Finder—not as a text tab—for normal reading.
+
+---
+
 ## [2026-11-03] - Expanded IEEE paper to ~15–20 pages with theory
 
 ### Summary

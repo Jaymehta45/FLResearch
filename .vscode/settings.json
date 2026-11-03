@@ -1,0 +1,6 @@
+{
+  "editor.unusualLineTerminators": "off",
+  "files.watcherExclude": {
+    "**/*.pdf": true
+  }
+}
