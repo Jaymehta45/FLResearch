@@ -1,0 +1,327 @@
+%% IEEE Conference sample paper generated from the FLResearch project.
+%% Compile with: pdflatex ieee_paper.tex  (run twice for references)
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{hyperref}
+
+\graphicspath{{figures/}}
+
+\begin{document}
+
+\title{Federated Learning for Network Intrusion Classification:\\
+FedAvg Performance and Resilience to Label Poisoning on CIC--UNSW-NB15}
+
+\author{
+\IEEEauthorblockN{Jay Mehta}
+\IEEEauthorblockA{
+\textit{Independent Research / Academic Project}\\
+Email: (author contact)
+}
+}
+
+\maketitle
+
+\begin{abstract}
+Federated learning (FL) enables collaborative model training without sharing raw data, which is attractive for network security analytics where traffic telemetry is sensitive. In this paper, we present a complete simulation study of Federated Averaging (FedAvg) for multi-class intrusion / traffic classification on the CIC--UNSW-NB15 augmented dataset. A multilayer perceptron (MLP) is trained across simulated clients that hold disjoint training shards; the server aggregates client weights by sample-count-weighted averaging. We evaluate a grid of 64 experimental configurations spanning client counts, global rounds, local epochs, and label-poisoning settings. Results show that longer training (more rounds and local epochs) improves accuracy in clean settings, while targeted label poisoning is most damaging when a single client controls training (accuracy dropping to roughly 0.85--0.87). With multiple clients, FedAvg dilutes one poisoned client's influence and accuracy typically remains above 0.90. Confusion-matrix analysis further shows that targeted poisoning toward the majority class inflates false positives for that class and reduces recall for several minority attack types. An interactive results dashboard accompanies this study for transparent inspection of all runs.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Federated learning, FedAvg, intrusion detection, data poisoning, CIC--UNSW-NB15, neural networks, confusion matrix
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Modern intrusion detection systems (IDS) rely on large volumes of flow-level telemetry. Organizations are often unwilling to centralize raw traffic features due to privacy, compliance, and operational constraints. \emph{Federated learning} addresses this tension by keeping data local while sharing only model updates~\cite{mcmahan2017communication}.
+
+This work studies a practical FL simulation for tabular network traffic classification:
+\begin{itemize}
+\item \textbf{Dataset:} CIC--UNSW-NB15 augmented (76 numeric features; 10 classes).
+\item \textbf{Model:} a compact MLP shared by all clients.
+\item \textbf{Aggregation:} Federated Averaging (FedAvg) with weights proportional to local sample counts.
+\item \textbf{Threat model:} label poisoning on a single client's training shard.
+\end{itemize}
+
+\noindent\textbf{Contributions.}
+\begin{enumerate}
+\item An end-to-end FedAvg pipeline for CIC--UNSW-NB15 with reproducible configuration knobs.
+\item A 64-run experimental sweep quantifying how clients, rounds, local epochs, and poison intensity affect accuracy, precision, recall, and F1-score.
+\item Confusion-matrix and per-class TP/FP/FN/TN analysis showing \emph{how} poisoning changes prediction behavior, not only overall accuracy.
+\item Public interactive dashboards summarizing experiments and confusion results.
+\end{enumerate}
+
+\section{Related Work}
+
+McMahan \textit{et al.} introduced FedAvg as a communication-efficient method for distributed SGD with periodic model averaging~\cite{mcmahan2017communication}. Subsequent surveys highlight FL challenges including non-IID data, communication cost, and adversarial clients~\cite{kairouz2021advances}.
+
+In cybersecurity, FL has been explored for collaborative IDS so that institutions can improve detection without exchanging packet or flow records~\cite{rahman2020internet}. Separately, data poisoning and backdoor attacks against FL are known to be effective when malicious updates are not robustly filtered~\cite{bagdasaryan2020backdoor,tolpegin2020data}. Our study focuses on a simple but realistic \emph{label-flipping} attack on one client and measures whether vanilla FedAvg already provides dilution when honest clients participate.
+
+\section{Methodology}
+
+\subsection{Dataset and Preprocessing}
+
+We use the CIC--UNSW-NB15 augmented tabular dataset. Feature matrix \(X \in \mathbb{R}^{N \times 76}\) is loaded from \texttt{Dataset.csv} and integer labels \(y \in \{0,\ldots,9\}\) from \texttt{Label.csv}. Non-finite values are replaced with zeros. A stratified 80/20 train/test split preserves class proportions. A \texttt{StandardScaler} is fit on the training portion only and applied to train and test features.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_pipeline.png}
+\caption{End-to-end data pipeline from raw CSVs to client shards and a held-out test set.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Client Simulation}
+
+Training indices are shuffled with a fixed seed and split into \(N\) approximately equal shards (IID-like simulation). Each shard represents one client and never observes another client's raw rows. The held-out test set is used only for global evaluation.
+
+\subsection{Model Architecture}
+
+All clients share an identical MLP (Fig.~\ref{fig:mlp}):
+\[
+76 \rightarrow 128\ (\mathrm{ReLU}) \rightarrow 128\ (\mathrm{ReLU}) \rightarrow 10\ (\mathrm{logits}).
+\]
+Training uses Adam (\(\mathrm{lr}=10^{-3}\)) and cross-entropy loss. Shared architecture enables element-wise parameter averaging.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_mlp.png}
+\caption{Shared MLP classifier used by every client.}
+\label{fig:mlp}
+\end{figure}
+
+\subsection{Federated Averaging}
+
+In each global round \(t\):
+\begin{enumerate}
+\item The server broadcasts global parameters \(\theta^{t}\).
+\item Client \(k\) initializes from \(\theta^{t}\) and performs \(E\) local epochs of minibatch Adam on its shard \((X_k,y_k)\), yielding \(\theta_k^{t+1}\).
+\item The server aggregates
+\begin{equation}
+\theta^{t+1} = \sum_{k=1}^{N} w_k \theta_k^{t+1},
+\quad
+w_k = \frac{n_k}{\sum_{j=1}^{N} n_j},
+\end{equation}
+where \(n_k = |D_k|\) is the local sample count.
+\item The updated global model is evaluated on the held-out test set.
+\end{enumerate}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_fedavg.png}
+\caption{One FedAvg round: broadcast, local training, and weighted aggregation.}
+\label{fig:fedavg}
+\end{figure}
+
+\subsection{Label Poisoning Attack}
+
+When enabled, a fraction \(f\) of labels on client~0 are corrupted before training (Fig.~\ref{fig:poison}). Modes include:
+\begin{itemize}
+\item \textbf{target:} flip selected labels to class \(0\) (majority class);
+\item \textbf{random\_wrong:} replace with a uniformly chosen incorrect class;
+\item \textbf{cycle:} replace label \(c\) with \((c+1)\bmod 10\).
+\end{itemize}
+Test labels remain clean. This isolates the effect of poisoned \emph{training} supervision on the aggregated model.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_poison.png}
+\caption{Targeted label poisoning applied only to client~0 training labels.}
+\label{fig:poison}
+\end{figure}
+
+\section{Experimental Setup}
+
+Unless noted otherwise, experiments use batch size 512--1024, Adam learning rate \(10^{-3}\), and CPU execution for reproducibility. The main sweep varies:
+\begin{itemize}
+\item clients \(N \in \{1,2,3,5\}\);
+\item global rounds \(R \in \{5,10\}\) (and related settings in the CSV grid);
+\item local epochs \(E \in \{1,2\}\);
+\item poison fraction \(f \in \{0, 0.25, 0.40\}\);
+\item poison mode \(\in \{\mathrm{target},\mathrm{random\_wrong}\}\).
+\end{itemize}
+Primary metrics are test accuracy, macro/weighted precision, recall, and F1-score. Selected runs additionally report full confusion matrices and per-class TP/FP/FN/TN.
+
+Interactive visualizations of all 64 runs and confusion analyses are published at
+\url{https://fl-research.vercel.app}.
+
+\section{Results}
+
+\subsection{Overall Sweep Findings}
+
+Across 64 federated runs, three patterns dominate:
+\begin{enumerate}
+\item Longer training (more rounds and local epochs) improves clean-run accuracy.
+\item Single-client training is most vulnerable to 40\% target poisoning (accuracy in the mid-0.85 to 0.87 range in worst cases).
+\item With \(N \ge 2\), FedAvg dilutes one poisoned client and accuracy often remains near or above 0.91.
+\end{enumerate}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{01_accuracy_by_clients_scenario.png}
+\caption{Best accuracy by client count and poisoning scenario.}
+\label{fig:acc_scenario}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{02_heatmap_clients_poison_pct.png}
+\caption{Max accuracy heatmap over clients versus poison percentage.}
+\label{fig:heatmap}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{04_clean_vs_40pct_target.png}
+\caption{Clean versus 40\% target poisoning (best accuracy per client count).}
+\label{fig:clean_vs_poison}
+\end{figure}
+
+\subsection{Best Configurations by Condition}
+
+Table~\ref{tab:best} summarizes the best observed accuracy for each (clients, poison) condition from the ranked sweep.
+
+\begin{table}[!t]
+\caption{Best test accuracy by client count and poison setting}
+\label{tab:best}
+\centering
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{ccccc}
+\toprule
+Clients & Poison & Mode & Acc. & F1 \\
+\midrule
+1 & 0\% & -- & 0.9237 & 0.9212 \\
+1 & 25\% & target & 0.9022 & 0.8881 \\
+1 & 40\% & target & 0.8666 & 0.8329 \\
+1 & 40\% & random & 0.9180 & 0.9127 \\
+2 & 0\% & -- & 0.9214 & 0.9177 \\
+2 & 40\% & target & 0.9188 & 0.9132 \\
+3 & 0\% & -- & 0.9181 & 0.9152 \\
+3 & 40\% & target & 0.9178 & 0.9135 \\
+5 & 0\% & -- & 0.9139 & 0.9119 \\
+5 & 40\% & target & 0.9139 & 0.9117 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{03_rounds_vs_accuracy_clean.png}
+\caption{Effect of global rounds on clean-run accuracy.}
+\label{fig:rounds}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{06_local_epochs_clean_facets.png}
+\caption{Local-epoch effects for clean federated runs.}
+\label{fig:local_epochs}
+\end{figure}
+
+\subsection{Poison Impact Interpretation}
+
+Fig.~\ref{fig:clean_vs_poison} shows that the accuracy gap between clean and 40\% target poison is large for \(N=1\) and shrinks rapidly as \(N\) increases. This matches the FedAvg weighting intuition: a single malicious shard contributes only \(1/N\) of the aggregated update when shards are equal-sized.
+
+\subsection{Confusion-Matrix Analysis}
+
+Confusion matrices reveal class-dependent behavior that accuracy alone hides. The dataset is heavily imbalanced toward class~0. In clean multi-client runs, class~0 recall is high (\(\approx 0.98\)), while rare classes (e.g., 1, 2, 9) are frequently missed. Many errors concentrate toward class~5, which acts as a frequent confusion sink.
+
+Under single-client 40\% target poisoning, the model over-predicts class~0: large off-diagonal mass appears in column~0 for several true classes (notably 4, 5, 6, 7). Correspondingly, class~0 false positives rise and recall for those attack classes falls, even when overall accuracy declines only moderately.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{cm_5_clients__clean.png}
+\caption{Confusion matrix: 5 clients, clean training.}
+\label{fig:cm5c}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{cm_5_clients__40pct_target_poison.png}
+\caption{Confusion matrix: 5 clients, 40\% target poison on client~0.}
+\label{fig:cm5p}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{cm_1_client__clean.png}
+\caption{Confusion matrix: 1 client, clean training.}
+\label{fig:cm1c}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{cm_1_client__40pct_target_poison.png}
+\caption{Confusion matrix: 1 client, 40\% target poison.}
+\label{fig:cm1p}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{tpfn_1_client__clean.png}
+\caption{Per-class TP/FP/FN/TN: 1 client, clean.}
+\label{fig:tpfn_clean}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{tpfn_1_client__40pct_target_poison.png}
+\caption{Per-class TP/FP/FN/TN: 1 client, 40\% target poison.}
+\label{fig:tpfn_poison}
+\end{figure}
+
+\section{Discussion}
+
+\textbf{Why multi-client FL resists this attack.} Equal-sized shards imply \(w_k = 1/N\). Even if client~0's update is corrupted, honest clients pull the average toward a better optimum.
+
+\textbf{Why single-client FL fails.} When \(N=1\), poisoned labels fully determine the learned decision boundary. Targeted flips toward the majority class encourage a ``predict class~0 when uncertain'' policy, visible in confusion matrices as elevated class~0 false positives.
+
+\textbf{Limitations.} This study uses IID shard simulation, global scaler fitting on pooled training features (a practical simplification versus fully private normalization), and a single MLP architecture. Non-IID partitions, robust aggregators (e.g., Krum, median), and differential privacy are left for future work.
+
+\section{Conclusion}
+
+We presented a sample IEEE-style experimental study of FedAvg for CIC--UNSW-NB15 traffic classification under clean and poisoned conditions. Key takeaways are:
+\begin{enumerate}
+\item Sufficient rounds and local epochs improve clean accuracy.
+\item Targeted label poisoning is most harmful when one client dominates training.
+\item Vanilla FedAvg already dilutes one poisoned client when multiple clients participate.
+\item Confusion analysis is essential under class imbalance: poisoning can silently degrade minority-class detection while leaving overall accuracy comparatively high.
+\end{enumerate}
+Future work includes non-IID client splits, robust aggregation defenses, and deployment-oriented FL frameworks.
+
+\section*{Acknowledgment}
+The authors thank open dataset maintainers of CIC--UNSW-NB15 augmented resources and the open-source PyTorch / scikit-learn communities.
+
+\begin{thebibliography}{00}
+\bibitem{mcmahan2017communication}
+H.~B. McMahan, E.~Moore, D.~Ramage, S.~Hampson, and B.~A. y~Arcas,
+``Communication-efficient learning of deep networks from decentralized data,''
+in \emph{Proc. AISTATS}, 2017, pp. 1273--1282.
+
+\bibitem{kairouz2021advances}
+P.~Kairouz \textit{et al.},
+``Advances and open problems in federated learning,''
+\emph{Found. Trends Mach. Learn.}, vol.~14, no.~1--2, pp. 1--210, 2021.
+
+\bibitem{rahman2020internet}
+S.~A. Rahman, H.~Tout, C.~Talhi, and A.~Mourad,
+``Internet of Things intrusion detection: Centralized, on-device, or federated learning?''
+\emph{IEEE Network}, vol.~34, no.~6, pp. 310--317, 2020.
+
+\bibitem{bagdasaryan2020backdoor}
+E.~Bagdasaryan, A.~Veit, Y.~Hua, D.~Estrin, and V.~Shmatikov,
+``How to backdoor federated learning,''
+in \emph{Proc. AISTATS}, 2020, pp. 2938--2948.
+
+\bibitem{tolpegin2020data}
+V.~Tolpegin, S.~Truex, M.~E. Gursoy, and L.~Liu,
+``Data poisoning attacks against federated learning systems,''
+in \emph{Proc. ESORICS}, 2020, pp. 480--501.
+\end{thebibliography}
+
+\end{document}
