@@ -1,5 +1,35 @@
 # Change Log
 
+## [2026-11-03] - Rebuild paper in authentic IEEE IEEEtran two-column format
+
+### Summary
+Compiled `ieee_paper.tex` with `tectonic` using `\documentclass[journal]{IEEEtran}` so the PDF is true IEEE two-column format (Abstract—, Index Terms—, dual columns, IEEE typography), replacing the single-column ReportLab look.
+
+### Reason
+User correctly noted the previous PDF did not look like IEEE format.
+
+### Files Modified
+* `paper/ieee_paper.tex` — fixed journal author block; added appendices and more references
+* `paper/ieee_paper.pdf` — IEEEtran/xdvipdfmx output (~9 two-column pages)
+* `paper/README.md` — document tectonic compile path
+* `changes.md` — this entry
+
+### Implementation Details
+Installed `tectonic`, compiled with official `IEEEtran.cls`. Verified with `pdftotext -layout` that page 1 shows dual columns and IEEE abstract/index-terms styling.
+
+### Impact
+PDF now matches IEEE journal visual format. Page count is lower than single-column drafts because two-column layout is denser.
+
+### Testing
+* `tectonic ieee_paper.tex` exit 0
+* `pdfinfo`: Creator LaTeX with hyperref; Pages 9
+* Layout text extraction shows two columns on page 1
+
+### Additional Notes
+Open PDF in Preview/Chrome, not as a Cursor text tab. Re-run `tectonic ieee_paper.tex` after TeX edits.
+
+---
+
 ## [2026-11-03] - Fix blank IEEE PDF by rebuilding with ReportLab
 
 ### Summary
