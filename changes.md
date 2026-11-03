@@ -1,5 +1,35 @@
 # Change Log
 
+## [2026-11-03] - Fix blank IEEE PDF by rebuilding with ReportLab
+
+### Summary
+Replaced the blank Chrome headless PDF with a ReportLab-generated PDF that contains real selectable text, figures, tables, and page numbers.
+
+### Reason
+The previous `ieee_paper.pdf` from Chrome print-to-PDF had ~20 blank pages (no extractable text), so the paper appeared empty when opened.
+
+### Files Modified
+* `paper/build_pdf.py` — new PDF builder
+* `paper/ieee_paper.pdf` — regenerated readable PDF (~16 pages, ~1.0 MB)
+* `paper/README.md` — document rebuild command
+* `changes.md` — this entry
+
+### Implementation Details
+Built the full expanded paper with ReportLab Platypus (Times fonts, justified body, figures from `paper/figures/`, Tables I–II, Algorithm 1, references). Verified with `pdftotext` that abstract/sections extract correctly.
+
+### Impact
+Users can now open and read the paper normally in Preview/Chrome/Acrobat.
+
+### Testing
+* `python3 build_pdf.py` succeeded
+* `pdftotext` showed abstract, introduction, and contributions
+* `pdfinfo`: 16 pages, ReportLab producer
+
+### Additional Notes
+Prefer Preview/Finder over opening the PDF as a text tab in Cursor.
+
+---
+
 ## [2026-11-03] - Silence unusual line-terminator warning on PDF
 
 ### Summary
