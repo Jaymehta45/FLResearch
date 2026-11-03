@@ -23,13 +23,10 @@
 Theoretical Foundations, Empirical Evaluation, and Resilience to Label Poisoning\\
 on the CIC--UNSW-NB15 Dataset}
 
-\author{
-\IEEEauthorblockN{Jay Mehta}
-\IEEEauthorblockA{
-\textit{Independent Research / Academic Project}\\
-Corresponding author e-mail: (author contact)
-}
-}
+\author{Jay~Mehta%
+\thanks{J.~Mehta is with Independent Research / Academic Project.
+Corresponding author e-mail: (author contact).}%
+\thanks{Manuscript prepared as a sample IEEE-format research report based on the FLResearch project experiments.}}
 
 \maketitle
 
@@ -514,6 +511,99 @@ in \emph{Proc. NeurIPS}, 2017.
 D.~Yin, Y.~Chen, R.~Kannan, and P.~Bartlett,
 ``Byzantine-robust distributed learning: Towards optimal statistical rates,''
 in \emph{Proc. ICML}, 2018.
+
+\bibitem{karimireddy2020scaffold}
+S.~P. Karimireddy, S.~Kale, M.~Mohri, S.~Reddi, S.~Stich, and A.~T. Suresh,
+``SCAFFOLD: Stochastic controlled averaging for federated learning,''
+in \emph{Proc. ICML}, 2020.
+
+\bibitem{li2020fedprox}
+T.~Li, A.~K. Sahu, M.~Zaheer, M.~Sanjabi, A.~Talwalkar, and V.~Smith,
+``Federated optimization in heterogeneous networks,''
+in \emph{Proc. MLSys}, 2020.
+
+\bibitem{fang2020local}
+M.~Fang, X.~Cao, J.~Jia, and N.~Gong,
+``Local model poisoning attacks to Byzantine-robust federated learning,''
+in \emph{Proc. USENIX Security}, 2020.
+
+\bibitem{biggio2012poisoning}
+B.~Biggio, B.~Nelson, and P.~Laskov,
+``Poisoning attacks against support vector machines,''
+in \emph{Proc. ICML}, 2012.
+
+\bibitem{shokri2015privacy}
+R.~Shokri and V.~Shmatikov,
+``Privacy-preserving deep learning,''
+in \emph{Proc. CCS}, 2015.
 \end{thebibliography}
+
+\appendices
+
+\section{Extended Notation and Optimization View}
+\label{app:notation}
+For completeness we collect notation used throughout the paper. Let $N$ be the number of clients, $R$ the number of global rounds, $E$ the number of local epochs, $B$ the minibatch size, and $\eta$ the Adam learning rate. Client $k$ holds $n_k$ labeled examples. The global parameter vector $\theta\in\mathbb{R}^{p}$ stacks all MLP weights and biases. Softmax probabilities for class $c$ are
+\begin{equation}
+p_c(\mathbf{x};\theta)=\frac{\exp([f_{\theta}(\mathbf{x})]_{c})}{\sum_{c'=0}^{C-1}\exp([f_{\theta}(\mathbf{x})]_{c'})}.
+\end{equation}
+Cross-entropy on an example is $-\log p_y(\mathbf{x};\theta)$. Adam updates use biased first/second moment estimates with standard $(\beta_1,\beta_2)$ defaults in PyTorch; because we reinitialize Adam each round, moment state does not accumulate across communication rounds.
+
+A useful optimization perspective treats FedAvg as repeatedly applying a local operator $\mathcal{U}_{k,E}$ (``$E$ epochs of Adam on $S_k$'') followed by consensus:
+\begin{equation}
+\theta^{t+1}=\sum_{k=1}^{N}w_k\,\mathcal{U}_{k,E}(\theta^{t}).
+\end{equation}
+When $E=1$ and minibatches equal full local sets, this resembles a single gradient step mixture method. Large $E$ increases the nonlinearity of $\mathcal{U}_{k,E}$ and therefore the benefit (or harm) of averaging, depending on whether local trajectories diverge.
+
+\section{Additional Discussion of Metrics under Imbalance}
+\label{app:metrics}
+Macro-averaged metrics treat each class equally, whereas micro-averaged / accuracy-weighted metrics emphasize frequent classes. In intrusion detection, both views matter: macro recall highlights rare-attack coverage, while micro accuracy reflects bulk traffic triage. Our sweep exports scikit-learn report aggregates alongside confusion matrices so either view can be reconstructed. One-vs-rest TN counts are typically large; practitioners should prioritize TP/FP/FN trends and per-class recall/precision curves when ranking defenses.
+
+Let $\pi_c=n^{(c)}/n_{\mathrm{test}}$ denote the empirical class prior on the test set. A trivial majority classifier that always predicts $\arg\max_c \pi_c$ achieves accuracy $\max_c\pi_c$. Any learned model should be compared against this floor. Because class~0 dominates CIC--UNSW-NB15 augmented labels in our split, high accuracy is necessary but not sufficient for operational usefulness.
+
+\section{Threat Model Variants and Expected Effects}
+\label{app:threats}
+Beyond the single-client label flip studied here, several related adversaries appear in the literature:
+\begin{itemize}
+\item \textbf{Multi-client label flips:} if $M$ of $N$ clients are poisoned at fraction $f$, FedAvg weights the malicious mass by roughly $M/N$ under equal shards. Dilution weakens unless $M$ is large.
+\item \textbf{Feature poisoning:} perturbing $\mathbf{x}$ can create stealthier backdoors than label flips alone.
+\item \textbf{Model replacement:} an attacker scales its update so that $\theta^{t+1}\approx\theta_{\mathrm{malicious}}$ after averaging~\cite{bagdasaryan2020backdoor}. Undefended FedAvg is much weaker against this than against naive label noise.
+\item \textbf{Trimmed-mean / Krum defenses:} robust aggregators~\cite{blanchard2017machine,yin2018byzantine} can reject outlier updates but may fail under adaptive local model poisoning~\cite{fang2020local}.
+\end{itemize}
+Our experiments deliberately isolate the weakest nontrivial poisoning case---label flips on one client---to measure baseline dilution. Stronger attacks would require stronger defenses; we leave that comparison to future controlled studies.
+
+\section{Implementation Hyperparameters}
+\label{app:hyper}
+Unless overridden by CLI flags, representative defaults include: Adam learning rate $10^{-3}$, batch size $512$--$1024$, stratified test fraction $0.2$, and random seed $42$. Poison client index is $0$ when enabled; poison target class is $0$ for target mode. Evaluation always uses the clean held-out test partition. The interactive dashboard at \url{https://fl-research.vercel.app} exposes charts for the full 64-run CSV and cached confusion scenarios.
+
+\section{Reproducibility Checklist}
+\label{app:repro}
+To reproduce the study:
+\begin{enumerate}
+\item Obtain CIC--UNSW-NB15 augmented \texttt{Dataset.csv} and \texttt{Label.csv}.
+\item Install dependencies from \texttt{requirements.txt}.
+\item Run \texttt{federated\_unsw.py} with the desired client/round/poison flags, or replay the sweep that produced \texttt{many\_tests\_ranked\_all.csv}.
+\item Generate static figures via \texttt{visualize\_many\_tests.py} and confusion artifacts via \texttt{visualize\_confusion.py}.
+\item Build the interactive dashboard via \texttt{visualize\_many\_tests\_interactive.py}.
+\item Compile this paper with an IEEE\LaTeX{} toolchain (\texttt{tectonic ieee\_paper.tex} or \texttt{pdflatex}).
+\end{enumerate}
+
+\section{Extended Qualitative Summary of Confusion Findings}
+\label{app:conf}
+Across cached confusion scenarios (5-client clean, 5-client 40\% target, 3-client 25\% target, 1-client clean, 1-client 40\% target), we observe:
+\begin{enumerate}
+\item Clean multi-client and poisoned multi-client matrices remain visually similar, consistent with Table~\ref{tab:means}.
+\item Rare classes (e.g., indices with tiny support) stay near-zero recall in all settings, indicating a capacity/representation issue rather than a poisoning-only issue.
+\item Class~5 frequently receives off-diagonal mass in clean runs, acting as a confusion attractor.
+\item Single-client target poisoning uniquely inflates predicted-class~0 mass for several true attack classes, matching the security narrative of missed detections with deceptively stable accuracy.
+\end{enumerate}
+These qualitative findings reinforce Section~\ref{sec:results}: federated averaging with multiple clients is a meaningful mitigator for this adversary class, but it does not solve intrinsic minority-class detection difficulty.
+
+\section{On Communication and Systems Cost}
+\label{app:comm}
+Although our simulation ignores network latency, the communication model of Section~\ref{sec:theory} still guides deployment planning. For parameter count $p\approx |\theta|$ and $N$ clients, each round costs $\Theta(Np)$ scalars exchanged. If a site can afford only $R_{\max}$ rounds per day, increasing $E$ is the primary lever for progress under IID data. Compression (quantization, sparsification) can reduce payload size but interacts with aggregation semantics and is orthogonal to the poisoning questions studied here. Secure aggregation protocols~\cite{bonawitz2019towards} protect individual updates from the server at additional cryptographic cost; they do not by themselves stop poisoning, because a malicious client can still train on bad labels before encrypting a plausible update.
+
+\section{Ethical and Operational Considerations}
+\label{app:ethics}
+Collaborative IDS training must respect data governance: even without sharing raw flows, model updates can leak information through membership or property inference. Differential privacy and secure aggregation are complementary controls. Operationally, any federated detector should be monitored with per-class dashboards; accuracy-only SLOs can hide regressions on rare but high-impact attack types---exactly the failure mode amplified by majority-class targeted poisoning in our single-client experiments.
 
 \end{document}

@@ -1,22 +1,26 @@
 # IEEE Sample Research Paper (Expanded)
 
-This folder contains an expanded IEEE journal-style sample paper (~15–20 pages) generated from the FLResearch project experiments, with substantial theory.
+Authentic **IEEE two-column journal format** (`IEEEtran`) compiled with TeX, plus theory, experiments, figures, and appendices.
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `ieee_paper.pdf` | Ready-to-read PDF (ReportLab build; ~15–20 pages) |
-| `build_pdf.py` | Regenerates `ieee_paper.pdf` reliably |
-| `ieee_paper.html` | Printable IEEE-style HTML |
-| `ieee_paper.tex` | LaTeX source (`IEEEtran` **journal** class) |
+| `ieee_paper.pdf` | **Use this** — real IEEE two-column PDF |
+| `ieee_paper.tex` | LaTeX source (`\documentclass[journal]{IEEEtran}`) |
+| `ieee_paper.html` | Browser preview (not strict IEEE layout) |
+| `build_pdf.py` | Alternate single-column ReportLab builder (not IEEE layout) |
 | `figures/` | Architecture + experiment + confusion figures |
 
-Regenerate PDF:
+## Compile (IEEE format)
 
 ```bash
-cd paper && python3 build_pdf.py
+cd paper
+tectonic ieee_paper.tex
+# or: pdflatex ieee_paper.tex && pdflatex ieee_paper.tex
 ```
+
+**Note:** IEEE two-column layout is dense. Roughly 9–12 IEEE pages ≈ 15–20 pages of single-column draft text.
 
 ## Contents covered
 
