@@ -6,10 +6,17 @@ This folder contains an expanded IEEE journal-style sample paper (~15–20 pages
 
 | File | Description |
 |------|-------------|
-| `ieee_paper.pdf` | Ready-to-read PDF (~20 pages) |
+| `ieee_paper.pdf` | Ready-to-read PDF (ReportLab build; ~15–20 pages) |
+| `build_pdf.py` | Regenerates `ieee_paper.pdf` reliably |
 | `ieee_paper.html` | Printable IEEE-style HTML |
 | `ieee_paper.tex` | LaTeX source (`IEEEtran` **journal** class) |
 | `figures/` | Architecture + experiment + confusion figures |
+
+Regenerate PDF:
+
+```bash
+cd paper && python3 build_pdf.py
+```
 
 ## Contents covered
 
