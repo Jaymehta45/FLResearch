@@ -1,5 +1,44 @@
 # Change Log
 
+## [2026-11-25] - Add more diagrams to the IEEE paper
+
+### Summary
+Created 10 new conceptual diagrams and embedded them (plus the existing top-15 runs chart) into the IEEE paper; recompiled to an 11-page two-column PDF.
+
+### Reason
+User requested more diagrams in the report.
+
+### Files Modified
+* `paper/figures/fig_system_overview.png`
+* `paper/figures/fig_central_vs_fed.png`
+* `paper/figures/fig_workflow.png`
+* `paper/figures/fig_imbalance.png`
+* `paper/figures/fig_threat_model.png`
+* `paper/figures/fig_dilution.png`
+* `paper/figures/fig_round_timeline.png`
+* `paper/figures/fig_experiment_grid.png`
+* `paper/figures/fig_cm_guide.png`
+* `paper/figures/fig_poison_bias.png`
+* `paper/ieee_paper.tex` — figure inserts across intro/theory/method/setup/results
+* `paper/ieee_paper.pdf` — regenerated (11 pages)
+* `changes.md` — this entry
+
+### Implementation Details
+New diagrams cover: FL system overview, centralized vs federated, research workflow, class imbalance, threat model, 1/N dilution, round timeline, experiment grid, confusion-matrix reading guide, and poison-induced prediction bias. Also added `05_top15_runs.png` to results.
+
+### Impact
+Paper is more visual and easier to follow; length increased from 9 to 11 IEEE pages.
+
+### Testing
+* `tectonic ieee_paper.tex` succeeded
+* `pdfinfo`: 11 pages
+* New figure files present under `paper/figures/`
+
+### Additional Notes
+Open `paper/ieee_paper.pdf` in Preview after closing any old Cursor PDF tab.
+
+---
+
 ## [2026-11-03] - Rebuild paper in authentic IEEE IEEEtran two-column format
 
 ### Summary
