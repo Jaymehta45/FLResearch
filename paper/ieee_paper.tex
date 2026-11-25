@@ -43,7 +43,21 @@ Federated learning, Federated Averaging (FedAvg), intrusion detection systems, n
 \subsection{Motivation}
 Network intrusion detection and traffic classification increasingly rely on supervised learning over high-dimensional flow features. In operational settings, however, the organizations that collect such telemetry---enterprises, internet service providers, campus networks, or industrial control environments---are often unwilling or legally unable to centralize raw records. Privacy regulations, competitive sensitivity, and breach-risk all discourage naive data pooling.
 
-Federated learning~\cite{mcmahan2017communication,kairouz2021advances} offers an alternative: each participant trains on local data and shares only model parameters (or gradients), which a coordinating server aggregates into a global model. For intrusion detection, this paradigm suggests a path toward collaborative detection quality without collaborative data warehouses~\cite{rahman2020internet}.
+Federated learning~\cite{mcmahan2017communication,kairouz2021advances} offers an alternative: each participant trains on local data and shares only model parameters (or gradients), which a coordinating server aggregates into a global model. For intrusion detection, this paradigm suggests a path toward collaborative detection quality without collaborative data warehouses~\cite{rahman2020internet}. Figure~\ref{fig:system} summarizes the intended deployment view; Figure~\ref{fig:central_vs_fed} contrasts it with classical centralized training.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_system_overview.png}
+\caption{System overview: sites keep raw flows local and exchange only model weights with a FedAvg server.}
+\label{fig:system}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_central_vs_fed.png}
+\caption{Centralized learning pools raw data; federated learning keeps data local and shares weights only.}
+\label{fig:central_vs_fed}
+\end{figure}
 
 \subsection{Problem Statement}
 We study the following concrete problem. Given a tabular multi-class dataset with feature vectors $\mathbf{x}\in\mathbb{R}^{d}$ and labels $y\in\{0,\ldots,C-1\}$, simulate $N$ clients holding disjoint training shards and learn a shared classifier $f_{\theta}$ via FedAvg. We then ask:
@@ -66,7 +80,14 @@ All experiments in this repository run on a single machine. ``Clients'' are logi
 \end{enumerate}
 
 \subsection{Paper Organization}
-Section~\ref{sec:background} reviews FL, IDS learning, and poisoning. Section~\ref{sec:theory} develops the mathematical framework. Section~\ref{sec:method} describes the system design. Section~\ref{sec:setup} details the experimental protocol. Sections~\ref{sec:results}--\ref{sec:discussion} present and interpret results. Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:background} reviews FL, IDS learning, and poisoning. Section~\ref{sec:theory} develops the mathematical framework. Section~\ref{sec:method} describes the system design. Section~\ref{sec:setup} details the experimental protocol. Sections~\ref{sec:results}--\ref{sec:discussion} present and interpret results. Section~\ref{sec:conclusion} concludes. Figure~\ref{fig:workflow} sketches the end-to-end research workflow used in this project.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_workflow.png}
+\caption{End-to-end research workflow from data preparation through federated experiments, poisoning analysis, and reporting.}
+\label{fig:workflow}
+\end{figure}
 
 \section{Background and Related Work}
 \label{sec:background}
@@ -84,7 +105,14 @@ Prior work has explored FL for IoT and network intrusion detection to keep telem
 Data poisoning injects corrupted training examples to degrade or redirect a learned model. In FL, a malicious client can poison labels or features, or upload crafted weights~\cite{bagdasaryan2020backdoor,tolpegin2020data}. Defenses include robust aggregators (coordinate-wise median, trimmed mean, Krum), anomaly detection on updates, and differential privacy. This paper evaluates \emph{undefended} FedAvg against a simple but realistic label-flipping adversary on one client, establishing an empirical baseline for how much ``natural dilution'' multi-client averaging provides.
 
 \subsection{UNSW-NB15 Family of Datasets}
-UNSW-NB15 and related CIC-augmented releases provide labeled flow features covering multiple attack categories alongside normal traffic. We use an augmented CIC--UNSW-NB15 tabular release with $d=76$ numeric features and $C=10$ classes. Exact semantic names of minority classes are less critical for our algorithmic conclusions than the empirical imbalance pattern: one dominant class and several rare classes with near-zero recall under a simple MLP.
+UNSW-NB15 and related CIC-augmented releases provide labeled flow features covering multiple attack categories alongside normal traffic. We use an augmented CIC--UNSW-NB15 tabular release with $d=76$ numeric features and $C=10$ classes. Exact semantic names of minority classes are less critical for our algorithmic conclusions than the empirical imbalance pattern: one dominant class and several rare classes with near-zero recall under a simple MLP (Fig.~\ref{fig:imbalance}).
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_imbalance.png}
+\caption{Schematic class imbalance on the test set: class~0 dominates, while several attack classes are rare.}
+\label{fig:imbalance}
+\end{figure}
 
 \section{Theoretical Framework}
 \label{sec:theory}
@@ -164,14 +192,28 @@ We consider a dirty-label adversary controlling client $0$ only. Features remain
 \item \textbf{Random-wrong:} $y\leftarrow$ uniform over $\mathcal{Y}\setminus\{y_{\mathrm{true}}\}$.
 \item \textbf{Cycle:} $y\leftarrow (y+1)\bmod C$.
 \end{itemize}
-The adversary does not modify uploaded weights beyond ordinary training on poisoned labels, and does not control the test distribution. This models a compromised or negligent data pipeline at one silo rather than an optimal model-replacement attack~\cite{bagdasaryan2020backdoor}.
+The adversary does not modify uploaded weights beyond ordinary training on poisoned labels, and does not control the test distribution. This models a compromised or negligent data pipeline at one silo rather than an optimal model-replacement attack~\cite{bagdasaryan2020backdoor}. Figure~\ref{fig:threat} summarizes the threat model used in our experiments.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_threat_model.png}
+\caption{Threat model: a single adversary corrupts a fraction of client~0 training labels; other clients and the test set remain clean.}
+\label{fig:threat}
+\end{figure}
 
 \subsection{Why Dilution Occurs under FedAvg}
 Suppose equal shard sizes and one poisoned client. Even if $\theta_0^{t+1}$ is strongly biased, the aggregate is
 \begin{equation}
 \theta^{t+1}=\frac{1}{N}\theta_0^{t+1}+\frac{1}{N}\sum_{k=1}^{N-1}\theta_k^{t+1}.
 \end{equation}
-As $N$ grows, the poisoned update's coefficient $1/N$ shrinks. This is not a cryptographic defense and fails if many clients collude or if the adversary mounts stronger model poisoning; but it explains our empirical observation that multi-client runs remain near clean accuracy under single-client label flips.
+As $N$ grows, the poisoned update's coefficient $1/N$ shrinks (Fig.~\ref{fig:dilution}). This is not a cryptographic defense and fails if many clients collude or if the adversary mounts stronger model poisoning; but it explains our empirical observation that multi-client runs remain near clean accuracy under single-client label flips.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_dilution.png}
+\caption{Poison dilution under equal-sized FedAvg: the malicious client's weight falls as $1/N$.}
+\label{fig:dilution}
+\end{figure}
 
 \subsection{Convergence Intuition (IID Case)}
 When shards are IID draws from the same distribution, local risks $\hat{R}_{S_k}$ are statistically similar. Local Adam steps from a shared initialization tend to move in related directions, so averaging is constructive. Formal FedAvg convergence bounds typically assume smoothness, bounded variance, and control of client drift as a function of $E$ and heterogeneity~\cite{kairouz2021advances}. Our shards are IID-like by construction (random shuffle then cut), placing us near the favorable regime. Non-IID partitions would increase drift and could amplify poisoning or reduce clean accuracy; we leave that to future work.
@@ -203,13 +245,20 @@ Figure~\ref{fig:mlp} shows the shared MLP. Identical architecture across clients
 \end{figure}
 
 \subsection{Federated Training Loop}
-Figure~\ref{fig:fedavg} and Algorithm~\ref{alg:fedavg} describe one round of training.
+Figure~\ref{fig:fedavg}, Figure~\ref{fig:timeline}, and Algorithm~\ref{alg:fedavg} describe one round of training.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig_fedavg.png}
 \caption{One FedAvg round: broadcast, local training, and weighted aggregation.}
 \label{fig:fedavg}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_round_timeline.png}
+\caption{Timeline of one global communication round from broadcast through aggregation.}
+\label{fig:timeline}
 \end{figure}
 
 \begin{algorithm}[t]
@@ -263,7 +312,14 @@ The principal sweep comprises 64 configurations exploring:
 \item poison fraction $f\in\{0,0.25,0.40\}$,
 \item poison mode $\in\{\mathrm{target},\mathrm{random\_wrong}\}$ when $f>0$.
 \end{itemize}
-Primary metrics: test accuracy, precision, recall, F1. Selected representative scenarios additionally store full confusion matrices.
+Primary metrics: test accuracy, precision, recall, F1. Selected representative scenarios additionally store full confusion matrices. Figure~\ref{fig:grid} summarizes the design.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_experiment_grid.png}
+\caption{Experimental sweep design: clients, rounds, local epochs, and poison settings yielding 64 runs.}
+\label{fig:grid}
+\end{figure}
 
 \subsection{Descriptive Statistics of the Sweep}
 Across all 64 runs, accuracy has mean $\approx 0.907$, standard deviation $\approx 0.014$, minimum $\approx 0.856$, and maximum $\approx 0.924$. The relatively small standard deviation indicates that most configurations remain in a high-accuracy band; the lower tail is concentrated in heavily poisoned single-client settings.
@@ -319,7 +375,7 @@ Figure~\ref{fig:acc_scenario} compares best accuracy by client count and scenari
 \end{figure}
 
 \subsection{Best Configurations}
-Table~\ref{tab:best} lists best observed metrics by condition. The most damaging cell is $N=1$ with $40\%$ target poison (accuracy $\approx 0.867$ in the best-of-condition table; some individual runs fall near $0.856$). By contrast, $N=5$ with $40\%$ target poison remains essentially tied with the clean five-client best ($\approx 0.914$).
+Table~\ref{tab:best} lists best observed metrics by condition. Figure~\ref{fig:top15} ranks the top-15 runs by accuracy across the full sweep. The most damaging cell is $N=1$ with $40\%$ target poison (accuracy $\approx 0.867$ in the best-of-condition table; some individual runs fall near $0.856$). By contrast, $N=5$ with $40\%$ target poison remains essentially tied with the clean five-client best ($\approx 0.914$).
 
 \begin{table}[!t]
 \caption{Best test accuracy by client count and poison setting}
@@ -367,7 +423,14 @@ Clients & $f=0$ & $f=0.25$ & $f=0.40$ \\
 Target poisoning toward class~0 is typically more harmful than random-wrong poisoning at the same fraction in low-$N$ regimes. Random-wrong noise is less coherently biased; target poisoning consistently teaches a majority-class prior. This distinction appears both in aggregate metrics and in confusion structure.
 
 \subsection{Confusion Matrices: Clean Multi-Client}
-Figures~\ref{fig:cm5c}--\ref{fig:cm5p} show five-client clean versus poisoned matrices. They are nearly alike: FedAvg dilution keeps decision boundaries stable. Class~0 dominates correct predictions; rare classes remain difficult; class~5 absorbs many off-diagonal errors.
+Figure~\ref{fig:cm_guide} recalls how to read a confusion matrix. Figures~\ref{fig:cm5c}--\ref{fig:cm5p} show five-client clean versus poisoned matrices. They are nearly alike: FedAvg dilution keeps decision boundaries stable. Class~0 dominates correct predictions; rare classes remain difficult; class~5 absorbs many off-diagonal errors.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_cm_guide.png}
+\caption{How to read a confusion matrix: diagonal cells are correct predictions; off-diagonal cells are mistakes.}
+\label{fig:cm_guide}
+\end{figure}
 
 \begin{figure}[!t]
 \centering
@@ -415,7 +478,21 @@ Figures~\ref{fig:cm1c}--\ref{fig:cm1p} show the single-client contrast. After $4
 \end{figure}
 
 \subsection{Security Interpretation of Errors}
-From a SOC analyst's perspective, elevated class~0 false positives after target poisoning mean attack flows are more often declared ``majority/benign-like'' (depending on label semantics), i.e., \emph{missed detections}. Overall accuracy may still look acceptable because class~0 is frequent. This is why confusion-level reporting is mandatory for security ML evaluations.
+From a SOC analyst's perspective, elevated class~0 false positives after target poisoning mean attack flows are more often declared ``majority/benign-like'' (depending on label semantics), i.e., \emph{missed detections}. Overall accuracy may still look acceptable because class~0 is frequent (Fig.~\ref{fig:poison_bias}). This is why confusion-level reporting is mandatory for security ML evaluations.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_poison_bias.png}
+\caption{Conceptual effect of majority-class target poisoning: predictions shift toward class~0, raising false positives and minority-class misses.}
+\label{fig:poison_bias}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{05_top15_runs.png}
+\caption{Top-15 runs by test accuracy across the 64-configuration sweep.}
+\label{fig:top15}
+\end{figure}
 
 \section{Discussion}
 \label{sec:discussion}
