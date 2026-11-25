@@ -1,5 +1,35 @@
 # Change Log
 
+## [2026-11-25] - Expand IEEE paper to 15 pages
+
+### Summary
+Expanded the IEEE two-column paper to exactly **15 pages** with more results discussion, tables, figures, practitioner takeaways, and appendices.
+
+### Reason
+User requested a 15-page paper.
+
+### Files Modified
+* `paper/ieee_paper.tex` — expanded sections, Table III (accuracy gaps), new figures, appendices, mild `\setstretch{1.08}`
+* `paper/ieee_paper.pdf` — regenerated (15 pages)
+* `paper/figures/fig_checklist.png`, `fig_metric_stack.png`, `fig_findings_board.png`
+* `paper/figures/cm_3_*`, `tpfn_3_*`, `tpfn_5_*` — additional confusion/TPFN figures
+* `changes.md` — this entry
+
+### Implementation Details
+Added 3-client and 5-client TPFN figures, findings board, metric stack, design checklist, accuracy-gap table, practical takeaways section, and deployment-mapping appendix. Used a few full-width `figure*` floats for key diagrams.
+
+### Impact
+Paper length is now 15 IEEE journal pages while remaining in authentic `IEEEtran` two-column format.
+
+### Testing
+* `tectonic ieee_paper.tex` succeeded
+* `pdfinfo`: Pages = 15
+
+### Additional Notes
+Open in Preview after closing any stale Cursor PDF tab.
+
+---
+
 ## [2026-11-25] - Add more diagrams to the IEEE paper
 
 ### Summary

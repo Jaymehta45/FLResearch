@@ -14,6 +14,10 @@
 \usepackage{url}
 \usepackage{hyperref}
 \usepackage{bm}
+\usepackage{setspace}
+
+% Slightly more readable leading while remaining IEEE two-column journal format.
+\setstretch{1.08}
 
 \graphicspath{{figures/}}
 
@@ -45,12 +49,12 @@ Network intrusion detection and traffic classification increasingly rely on supe
 
 Federated learning~\cite{mcmahan2017communication,kairouz2021advances} offers an alternative: each participant trains on local data and shares only model parameters (or gradients), which a coordinating server aggregates into a global model. For intrusion detection, this paradigm suggests a path toward collaborative detection quality without collaborative data warehouses~\cite{rahman2020internet}. Figure~\ref{fig:system} summarizes the intended deployment view; Figure~\ref{fig:central_vs_fed} contrasts it with classical centralized training.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{fig_system_overview.png}
+\includegraphics[width=0.92\textwidth]{fig_system_overview.png}
 \caption{System overview: sites keep raw flows local and exchange only model weights with a FedAvg server.}
 \label{fig:system}
-\end{figure}
+\end{figure*}
 
 \begin{figure}[!t]
 \centering
@@ -96,10 +100,12 @@ Section~\ref{sec:background} reviews FL, IDS learning, and poisoning. Section~\r
 Classical machine learning for IDS ranges from shallow models (decision trees, SVMs, random forests) to deep neural networks trained on packet or flow features. Centralized training assumes a single data lake. While often accurate in benchmarks, this assumption conflicts with multi-organization collaboration. Moreover, network data are characteristically \emph{imbalanced}: benign or majority classes dominate, so accuracy can be misleading unless accompanied by per-class analysis.
 
 \subsection{Federated Learning Basics}
-In cross-silo or cross-device FL, a server coordinates rounds of local training and aggregation~\cite{kairouz2021advances}. FedAvg~\cite{mcmahan2017communication} is the canonical algorithm: clients run multiple local SGD/Adam steps and return updated weights; the server averages them, typically weighted by local dataset sizes. Variants address non-IID data (FedProx, SCAFFOLD), communication compression, personalization, and robust aggregation.
+In cross-silo or cross-device FL, a server coordinates rounds of local training and aggregation~\cite{kairouz2021advances,li2020federated}. FedAvg~\cite{mcmahan2017communication} is the canonical algorithm: clients run multiple local SGD/Adam steps and return updated weights; the server averages them, typically weighted by local dataset sizes. Variants address non-IID data (FedProx~\cite{li2020fedprox}, SCAFFOLD~\cite{karimireddy2020scaffold}), communication compression, personalization, and robust aggregation. Cross-silo FL---the setting closest to institutional IDS collaboration---typically involves fewer, more reliable clients than cross-device FL, which makes equal-shard simulations a reasonable first-order model even though real silos differ in volume and class mix.
+
+Privacy-preserving deep learning predates the modern FedAvg wave~\cite{shokri2015privacy}, and large-scale FL systems emphasize secure aggregation and production orchestration~\cite{bonawitz2019towards}. Our study sits at the algorithmic/experimental layer: we ask how vanilla FedAvg behaves under label noise on tabular intrusion data, not how to engineer a production FL platform.
 
 \subsection{FL for Security Analytics}
-Prior work has explored FL for IoT and network intrusion detection to keep telemetry local while improving collective detectors~\cite{rahman2020internet}. Our contribution is not a new FL optimizer; rather, we provide a carefully instrumented FedAvg case study with poisoning analysis and confusion-level diagnostics on a widely used tabular intrusion dataset.
+Prior work has explored FL for IoT and network intrusion detection to keep telemetry local while improving collective detectors~\cite{rahman2020internet}. Our contribution is not a new FL optimizer; rather, we provide a carefully instrumented FedAvg case study with poisoning analysis and confusion-level diagnostics on a widely used tabular intrusion dataset. Relative to accuracy-only IDS reports, we emphasize that security utility is mediated by per-class errors: a detector that ``looks accurate'' can still miss rare attacks after majority-class targeted poisoning.
 
 \subsection{Poisoning and Byzantine Behavior}
 Data poisoning injects corrupted training examples to degrade or redirect a learned model. In FL, a malicious client can poison labels or features, or upload crafted weights~\cite{bagdasaryan2020backdoor,tolpegin2020data}. Defenses include robust aggregators (coordinate-wise median, trimmed mean, Krum), anomaly detection on updates, and differential privacy. This paper evaluates \emph{undefended} FedAvg against a simple but realistic label-flipping adversary on one client, establishing an empirical baseline for how much ``natural dilution'' multi-client averaging provides.
@@ -247,12 +253,12 @@ Figure~\ref{fig:mlp} shows the shared MLP. Identical architecture across clients
 \subsection{Federated Training Loop}
 Figure~\ref{fig:fedavg}, Figure~\ref{fig:timeline}, and Algorithm~\ref{alg:fedavg} describe one round of training.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{fig_fedavg.png}
+\includegraphics[width=0.92\textwidth]{fig_fedavg.png}
 \caption{One FedAvg round: broadcast, local training, and weighted aggregation.}
 \label{fig:fedavg}
-\end{figure}
+\end{figure*}
 
 \begin{figure}[!t]
 \centering
@@ -353,12 +359,12 @@ Under clean labels, increasing $R$ and $E$ generally improves accuracy. Single-c
 \subsection{Clients and Poison Scenarios}
 Figure~\ref{fig:acc_scenario} compares best accuracy by client count and scenario. Figure~\ref{fig:heatmap} shows a clients-versus-poison heatmap of maximum accuracy. Figure~\ref{fig:clean_vs_poison} contrasts clean versus $40\%$ target poisoning.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{01_accuracy_by_clients_scenario.png}
+\includegraphics[width=0.90\textwidth]{01_accuracy_by_clients_scenario.png}
 \caption{Best accuracy by client count and poisoning scenario.}
 \label{fig:acc_scenario}
-\end{figure}
+\end{figure*}
 
 \begin{figure}[!t]
 \centering
@@ -478,7 +484,7 @@ Figures~\ref{fig:cm1c}--\ref{fig:cm1p} show the single-client contrast. After $4
 \end{figure}
 
 \subsection{Security Interpretation of Errors}
-From a SOC analyst's perspective, elevated class~0 false positives after target poisoning mean attack flows are more often declared ``majority/benign-like'' (depending on label semantics), i.e., \emph{missed detections}. Overall accuracy may still look acceptable because class~0 is frequent (Fig.~\ref{fig:poison_bias}). This is why confusion-level reporting is mandatory for security ML evaluations.
+From a SOC analyst's perspective, elevated class~0 false positives after target poisoning mean attack flows are more often declared ``majority/benign-like'' (depending on label semantics), i.e., \emph{missed detections}. Overall accuracy may still look acceptable because class~0 is frequent (Fig.~\ref{fig:poison_bias}). This is why confusion-level reporting is mandatory for security ML evaluations. Figure~\ref{fig:metric_stack} summarizes the evaluation stack used throughout this work: accuracy is only the first layer.
 
 \begin{figure}[!t]
 \centering
@@ -489,10 +495,86 @@ From a SOC analyst's perspective, elevated class~0 false positives after target 
 
 \begin{figure}[!t]
 \centering
+\includegraphics[width=\columnwidth]{fig_metric_stack.png}
+\caption{Evaluation stack: accuracy alone is insufficient; confusion-level and security interpretation are required under imbalance.}
+\label{fig:metric_stack}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
 \includegraphics[width=\columnwidth]{05_top15_runs.png}
 \caption{Top-15 runs by test accuracy across the 64-configuration sweep.}
 \label{fig:top15}
 \end{figure}
+
+\subsection{Three-Client Intermediate Case}
+To bridge the single-client and five-client extremes, Figures~\ref{fig:cm3} and~\ref{fig:tpfn3} show a three-client run with $25\%$ target poisoning on client~0. The confusion structure remains close to clean multi-client behavior: FedAvg already provides substantial dilution at $N=3$, and the dramatic column-~0 absorption seen at $N=1$ does not appear. This intermediate case supports a smooth transition in risk as the number of honest peers increases.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{cm_3_clients__25pct_target_poison.png}
+\caption{Confusion matrix: 3 clients, $25\%$ target poison on client~0.}
+\label{fig:cm3}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{tpfn_3_clients__25pct_target_poison.png}
+\caption{Per-class TP/FP/FN/TN: 3 clients, $25\%$ target poison.}
+\label{fig:tpfn3}
+\end{figure}
+
+\subsection{Five-Client Per-Class Diagnostics}
+For completeness, Figures~\ref{fig:tpfn5c} and~\ref{fig:tpfn5p} show TP/FP/FN/TN bars for five-client clean and $40\%$ target-poison settings. The near-match between these plots is consistent with the nearly identical confusion matrices in Figures~\ref{fig:cm5c}--\ref{fig:cm5p} and with the mean-accuracy table (Table~\ref{tab:means}).
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{tpfn_5_clients__clean.png}
+\caption{Per-class TP/FP/FN/TN: 5 clients, clean.}
+\label{fig:tpfn5c}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{tpfn_5_clients__40pct_target_poison.png}
+\caption{Per-class TP/FP/FN/TN: 5 clients, $40\%$ target poison.}
+\label{fig:tpfn5p}
+\end{figure}
+
+\subsection{Summary of Empirical Claims}
+We summarize the empirical claims supported by the sweep and confusion study (Fig.~\ref{fig:findings}):
+\begin{enumerate}
+\item \textbf{Training budget matters.} Larger $R$ and $E$ improve clean accuracy within the explored grid.
+\item \textbf{Poison severity is $N$-dependent.} The largest degradation occurs at $N=1$ with $40\%$ target flips.
+\item \textbf{Dilution is real under FedAvg.} For $N\ge 2$ (and especially $N=5$), single-client label poisoning rarely moves accuracy outside the clean high-$0.90$ band.
+\item \textbf{Target $>$ random-wrong} as a coherent bias toward the majority class in low-$N$ settings.
+\item \textbf{Confusion reveals hidden harm.} Even moderate accuracy drops can hide large minority-class FN increases.
+\end{enumerate}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig_findings_board.png}
+\caption{Key quantitative findings from the 64-run FedAvg and poisoning study.}
+\label{fig:findings}
+\end{figure*}
+
+\begin{table}[!t]
+\caption{Approximate accuracy gap (clean best $-$ $40\%$ target best) by client count}
+\label{tab:gap}
+\centering
+\begin{tabular}{ccc}
+\toprule
+Clients $N$ & Clean best & Gap vs $40\%$ target \\
+\midrule
+1 & 0.9237 & $\approx 0.057$ \\
+2 & 0.9214 & $\approx 0.003$ \\
+3 & 0.9181 & $\approx 0.000$ \\
+5 & 0.9139 & $\approx 0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:gap} makes the dilution effect quantitative: the clean-versus-target gap collapses from roughly six percentage points at $N=1$ to essentially zero at $N\in\{3,5\}$ for the best-of-condition rows. This table should be read together with the confusion analysis: even a near-zero accuracy gap does not imply identical per-class behavior in every run, but in our cached multi-client scenarios the matrices remain visually close.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -503,22 +585,39 @@ From a SOC analyst's perspective, elevated class~0 false positives after target 
 \item Prefer adequate $R$ and $E$; under-trained models are both less accurate and potentially less stable under noise.
 \item Monitor per-class recall, not only accuracy, especially for rare attack types.
 \item Treat single-client ``federated'' training as essentially centralized: it inherits no dilution benefit.
+\item Publish confusion artifacts alongside leaderboard metrics so regressions are auditable.
 \end{enumerate}
+Figure~\ref{fig:checklist} compresses these recommendations into a practical checklist for FL-based IDS design.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_checklist.png}
+\caption{Practical design checklist derived from the FedAvg and poisoning experiments in this paper.}
+\label{fig:checklist}
+\end{figure}
+
+\subsection{Relationship to Robust Aggregation Literature}
+Byzantine-robust methods such as Krum and coordinate-wise median~\cite{blanchard2017machine,yin2018byzantine} target adversaries that can send arbitrary updates. Our label-flip adversary is weaker: it must still produce an update that is the result of ordinary local optimization on corrupted labels. Consequently, undefended FedAvg can look surprisingly resilient when only one of many equal shards is poisoned. That resilience should not be extrapolated to model-replacement or colluding-client settings~\cite{bagdasaryan2020backdoor,fang2020local}. A layered defense---dilution via many clients, plus robust aggregation, plus update anomaly detection---is the prudent long-term posture.
+
+\subsection{Optimization and Systems Perspective}
+From an optimization viewpoint, FedAvg trades local progress for consensus. Increasing $E$ amplifies local specialization; under IID shards this often helps, but under non-IID shards it can hurt. From a systems viewpoint, communication scales as $\Theta(R N |\theta|)$. Because our MLP is compact, full-state exchanges are cheap in simulation; larger deep models would motivate compression or partial participation. Secure aggregation~\cite{bonawitz2019towards} can hide individual updates from the server, which is valuable for privacy but does not stop a client from training on poisoned labels before encrypting its update.
 
 \subsection{What This Study Does Not Claim}
-We do not claim FedAvg is secure against adaptive model-poisoning or colluding clients. We do not claim MLP is the optimal IDS architecture. We do not claim IID shards represent real institutional heterogeneity.
+We do not claim FedAvg is secure against adaptive model-poisoning or colluding clients. We do not claim MLP is the optimal IDS architecture. We do not claim IID shards represent real institutional heterogeneity. We do not claim that accuracy near $0.91$ is production-ready without calibration, thresholding, or human triage. We also do not claim that majority-class semantics map one-to-one onto ``benign'' traffic for every UNSW-derived release; the algorithmic lesson is about majority-class targeted flips under imbalance, independent of the precise taxonomy names.
 
 \subsection{Limitations}
 \begin{itemize}
 \item \textbf{IID simulation:} random shards underestimate heterogeneity-induced drift.
 \item \textbf{Global scaler:} pooled normalization is a centralized shortcut.
 \item \textbf{Single architecture:} no comparison to trees, CNNs on raw packets, or GNNs.
-\item \textbf{Undefended aggregation:} no median/Krum/DP baselines.
+\item \textbf{Undefended aggregation:} no median/Krum/DP baselines in the main sweep.
 \item \textbf{Label semantics:} class indices are used without exhaustive attack taxonomy narration.
+\item \textbf{No systems noise:} no stragglers, dropouts, or bandwidth limits.
+\item \textbf{Single poisoner:} colluding clients are not modeled.
 \end{itemize}
 
 \subsection{Threats to Validity}
-Random seeds, hyperparameter choices (Adam lr, batch size), and the particular augmented dataset release could shift absolute numbers. Relative conclusions---dilution with $N$, severity of target poison at $N=1$, need for confusion analysis---were consistent across the sweep's internal variation.
+Random seeds, hyperparameter choices (Adam lr, batch size), and the particular augmented dataset release could shift absolute numbers. Relative conclusions---dilution with $N$, severity of target poison at $N=1$, need for confusion analysis---were consistent across the sweep's internal variation. External validity is limited by the simulation setting: real cross-silo deployments would add partial participation, non-IID institutional traffic mixes, and operational label noise that is not purely adversarial. Construct validity of ``accuracy'' as a security metric is weak under imbalance; that is why we emphasize confusion matrices.
 
 \subsection{Future Work}
 \begin{enumerate}
@@ -528,12 +627,26 @@ Random seeds, hyperparameter choices (Adam lr, batch size), and the particular a
 \item Cost-sensitive losses or resampling for rare classes.
 \item Multi-poisoner and model-replacement attacks.
 \item Deployment in a real FL framework with networked workers.
+\item Calibrated probabilities and cost-sensitive operating points for SOC workflows.
+\item Longitudinal evaluation as traffic distributions drift over time.
 \end{enumerate}
+
+\section{Practical Takeaways for Practitioners}
+\label{sec:takeaways}
+For practitioners considering federated IDS collaboration, we offer the following condensed guidance.
+\begin{itemize}
+\item \textbf{Start with many silos.} If only one organization contributes data, you are not getting FL's dilution benefit.
+\item \textbf{Budget rounds generously.} Short federated schedules under-utilize local data and leave more variance on the table.
+\item \textbf{Instrument minority classes.} Alert on per-class recall drops, not only global accuracy SLOs.
+\item \textbf{Assume dirty labels somewhere.} Even without a nation-state adversary, mislabeled tickets and broken ETL pipelines happen.
+\item \textbf{Plan an escalation path.} FedAvg dilution is a baseline; robust aggregation and human review remain necessary for higher assurance.
+\end{itemize}
+These takeaways are intentionally conservative: they follow directly from the measured gaps between $N=1$ and $N\ge 2$ under targeted label noise.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented an expanded theoretical and experimental study of FedAvg for multi-class traffic classification on CIC--UNSW-NB15. Starting from the global empirical risk and its client-wise decomposition, we formalized local optimization, size-weighted aggregation, communication scaling, class-imbalance metrics, and a single-client label-poisoning adversary. Empirically, among 64 configurations, clean training benefits from more rounds and local epochs; targeted poisoning is highly damaging when $N=1$ and largely diluted when $N\ge 2$; and confusion matrices reveal majority-class bias that accuracy can mask. These findings support a practical message: federated collaboration with multiple honest clients, sufficient training, and per-class monitoring forms a stronger baseline than accuracy-only evaluation of single-silo training under label noise.
+We presented an expanded theoretical and experimental study of FedAvg for multi-class traffic classification on CIC--UNSW-NB15. Starting from the global empirical risk and its client-wise decomposition, we formalized local optimization, size-weighted aggregation, communication scaling, class-imbalance metrics, and a single-client label-poisoning adversary. Empirically, among 64 configurations, clean training benefits from more rounds and local epochs; targeted poisoning is highly damaging when $N=1$ and largely diluted when $N\ge 2$; and confusion matrices reveal majority-class bias that accuracy can mask. Intermediate three-client results sit between these extremes, reinforcing a smooth dilution story. These findings support a practical message: federated collaboration with multiple honest clients, sufficient training, and per-class monitoring forms a stronger baseline than accuracy-only evaluation of single-silo training under label noise.
 
 \section*{Acknowledgment}
 The author thanks the maintainers of CIC--UNSW-NB15 related public datasets and the developers of PyTorch, NumPy, pandas, and scikit-learn.
@@ -674,6 +787,36 @@ Across cached confusion scenarios (5-client clean, 5-client 40\% target, 3-clien
 \item Single-client target poisoning uniquely inflates predicted-class~0 mass for several true attack classes, matching the security narrative of missed detections with deceptively stable accuracy.
 \end{enumerate}
 These qualitative findings reinforce Section~\ref{sec:results}: federated averaging with multiple clients is a meaningful mitigator for this adversary class, but it does not solve intrinsic minority-class detection difficulty.
+
+A useful mental model is to separate \emph{structural} errors from \emph{adversarial} errors. Structural errors---rare-class misses and class-~5 attraction---appear even in clean training and therefore require modeling or data remedies (reweighting, better features, hierarchical detectors). Adversarial errors---extra mass into predicted class~0 after target flips---appear primarily when poisoned updates are not diluted. Confusing the two leads to incorrect mitigation: robust aggregation will not fix a missing rare-class representation, and oversampling rare classes will not stop a model-replacement attack.
+
+\section{Mapping Findings to Deployment Questions}
+\label{app:deploy}
+We briefly map experimental findings to questions a deployment team might ask.
+\begin{itemize}
+\item \emph{``Do we need FL if we trust our partners?''} Even among trusted partners, label pipelines fail. Dilution still helps against accidental poison.
+\item \emph{``Is accuracy $0.91$ good enough?''} Only if minority-class recall meets the SOC's risk tolerance. Check Fig.~\ref{fig:metric_stack}.
+\item \emph{``Can we start with one data center?''} You can train, but you should not expect FL-style robustness; you are closer to centralized learning.
+\item \emph{``Should we adopt Krum immediately?''} If the threat model includes arbitrary updates, yes. If the main risk is mild label noise on one silo, FedAvg dilution plus monitoring may be the first step.
+\item \emph{``Where should dashboards focus?''} Per-class recall trends and confusion deltas after each training campaign, not only a single accuracy number.
+\end{itemize}
+
+\section{Glossary of Symbols}
+\label{app:glossary}
+\begin{itemize}
+\item $N$: number of federated clients / shards.
+\item $R$: number of global communication rounds.
+\item $E$: local epochs per round.
+\item $B$: minibatch size.
+\item $\eta$: Adam learning rate.
+\item $n_k$: number of training examples on client $k$.
+\item $w_k=n_k/\sum_j n_j$: FedAvg aggregation weight.
+\item $f$: fraction of labels flipped on the poisoned client.
+\item $C$: number of classes ($C=10$ here).
+\item $d$: feature dimension ($d=76$ here).
+\item $M$: confusion matrix; $M_{ij}$ counts true class $i$ predicted as $j$.
+\item $\mathrm{TP}_c,\mathrm{FP}_c,\mathrm{FN}_c,\mathrm{TN}_c$: one-vs-rest counts for class $c$.
+\end{itemize}
 
 \section{On Communication and Systems Cost}
 \label{app:comm}
